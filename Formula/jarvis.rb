@@ -7,10 +7,11 @@ class Jarvis < Formula
   license "MIT"
   head "https://github.com/yashMangal19/jarvis.git", branch: "main"
 
-  # Builds from source with `swift build` (Swift 6.0+, Xcode 16 or Command Line Tools 16).
+  # Builds from source with `swift build`, which needs Swift 6.0+ (Xcode 16 or Command Line Tools 16),
+  # and those need macOS 14.5 or later. Sonoma is the closest floor Homebrew can express; on 14.0-14.4
+  # install/install.sh checks the Swift version and stops with an explanation. Jarvis itself runs on 13+.
   # No `depends_on xcode:`: Homebrew's Xcode requirement rejects a Command Line Tools-only Mac.
-  # install/install.sh checks the Swift version and stops with an explanation.
-  depends_on macos: :ventura
+  depends_on macos: :sonoma
   depends_on "whisper.cpp"
 
   # Below macOS 26 there is no Apple speech recognition to fall back on, so the main model ships too.
@@ -29,8 +30,8 @@ class Jarvis < Formula
   end
 
   def install
-    # SwiftPM sandboxes its manifest build, and macOS refuses a sandbox inside Homebrew's build sandbox.
-    inreplace "install/install.sh", "swift build --package-path", "swift build --disable-sandbox --package-path"
+    # --bundle-only builds with `swift build --disable-sandbox` (SwiftPM's sandbox can't nest in Homebrew's)
+    # and refuses while Jarvis runs from any version folder of this formula or from the opt link.
     system "install/install.sh", "--bundle-only", "--prefix", prefix
 
     (pkgshare/"models").install resource("whisper-base-en")
@@ -55,19 +56,15 @@ class Jarvis < Formula
   end
 
   def caveats
-    speech = if MacOS.version < :tahoe
-      "Speech to text uses whisper.cpp with the small model installed here."
-    else
-      <<~EOS.chomp
-        Speech to text uses Apple's on-device speech recognition. If your language isn't covered,
-        Jarvis downloads a whisper model in the background.
-      EOS
-    end
     <<~EOS
       To open Jarvis, run:
         jarvis
-      The first run copies the whisper models into ~/Jarvis/models. Look for the icon in the menu bar.
-      #{speech}
+      Open it with `jarvis` the first time: that run copies the whisper models into ~/Jarvis/models.
+      Opening Jarvis.app from Finder, Spotlight or a login item skips the copy. Look for the icon in
+      the menu bar.
+      Speech to text: on macOS 15 and earlier, whisper.cpp with the small model installed here. On
+      macOS 26 and later, Apple's on-device speech recognition; if your language isn't covered, Jarvis
+      downloads a whisper model in the background.
 
       Notes and voice commands use Claude Code if it's installed (https://claude.com/claude-code).
       Jarvis looks for claude in Homebrew's bin folder, ~/.local/bin and ~/.claude/local, not on
@@ -81,14 +78,18 @@ class Jarvis < Formula
         2. Screen Recording is asked for once, for call audio only. You can say no and allow it
            later from the menu.
         3. To import iPhone Voice Memos, allow Full Disk Access: System Settings > Privacy & Security >
-           Full Disk Access > add Jarvis (the menu has a button that opens that page).
+           Full Disk Access > + (the menu has a button that opens that page). The app is at
+             #{opt_prefix}/Jarvis.app
+           In the file picker press Shift-Command-G (⇧⌘G), paste that path and press Return.
       Jarvis is signed on your Mac without a developer certificate. After a reinstall or upgrade macOS
       may ask for the microphone again, and Screen Recording or Full Disk Access can switch off without
       a prompt. Turn them back on from the lines in Jarvis's menu. Quit Jarvis from its menu before
-      `brew upgrade` or `brew reinstall`.
+      `brew upgrade` or `brew reinstall`. Upgrades build from source too, so they need Swift 6
+      (macOS 14.5 or later, with Xcode 16 or Command Line Tools 16).
 
-      The AirPods stem squeeze is experimental and off by default. Read its side effects in the guide
-      before you turn it on in Settings.
+      The AirPods stem squeeze is experimental and off by default. Read its side effects in the
+      README ("AirPods stem squeeze" under "What runs where") before you turn it on in Settings:
+        https://github.com/yashMangal19/jarvis#what-runs-where
 
       Privacy: your audio never leaves your Mac. When Claude Code writes your notes, each hour's
       transcript text is sent to Anthropic. A voice command's words go to Claude to draft the plan
