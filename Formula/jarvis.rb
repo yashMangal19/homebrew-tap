@@ -37,12 +37,13 @@ class Jarvis < Formula
     (pkgshare/"models").install resource("whisper-base-en")
     (pkgshare/"models").install resource("whisper-small") if MacOS.version < :tahoe
 
-    # Homebrew's post-install step cannot write to ~/Jarvis, so the launcher copies the models there
+    # Homebrew's post-install step cannot write to your home folder, so the launcher copies the models into
+    # Jarvis's data home, ~/Library/Application Support/Jarvis (DEC-41)
     # (a copy, never a link, and never over a file that is already there), then opens the app.
     (bin/"jarvis").write <<~SH
       #!/bin/bash
       set -euo pipefail
-      models="$HOME/Jarvis/models"
+      models="$HOME/Library/Application Support/Jarvis/models"
       mkdir -p "$models"
       for file in "#{opt_pkgshare}/models/"*.bin; do
         name="$(basename "$file")"
@@ -59,7 +60,8 @@ class Jarvis < Formula
     <<~EOS
       To open Jarvis, run:
         jarvis
-      Open it with `jarvis` the first time: that run copies the whisper models into ~/Jarvis/models.
+      Open it with `jarvis` the first time: that run copies the whisper models into
+      ~/Library/Application Support/Jarvis/models.
       Opening Jarvis.app from Finder, Spotlight or a login item skips the copy. Look for the icon in
       the menu bar.
       Speech to text: on macOS 15 and earlier, whisper.cpp with the small model installed here. On
